@@ -1,4 +1,6 @@
 import { Injectable } from '@angular/core';
+import { HttpClient, HttpClientModule } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface Memory {
   id: string;
@@ -17,56 +19,53 @@ export interface Memory {
   providedIn: 'root'
 })
 export class MemoryService {
-  private readonly STORAGE_KEY = 'memories';
+  private readonly API_URL = 'http://localhost:3000/api/memories';
 
-  constructor() {}
+  constructor(private http: HttpClient) {}
 
-  saveMemory(memory: Omit<Memory, 'id' | 'createdAt'>): string {
-    const memories = this.getMemories();
+  async saveMemory(memory: Omit<Memory, 'id' | 'createdAt'>): Promise<string> {
     const newMemory: Memory = {
       ...memory,
       id: this.generateId(),
       createdAt: new Date()
     };
-    
-    memories.push(newMemory);
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(memories));
-    return newMemory.id;
+
+    const res: any = await firstValueFrom(this.http.post(this.API_URL, newMemory));
+    return res.id; // backend sends back id
   }
 
-  getMemories(): Memory[] {
-    const stored = localStorage.getItem(this.STORAGE_KEY);
-    if (stored) {
-      try {
-        return JSON.parse(stored).map((memory: any) => ({
-          ...memory,
-          createdAt: new Date(memory.createdAt)
-        }));
-      } catch (e) {
-        console.error('Error parsing memories from localStorage', e);
-        return [];
-      }
+  async getMemories(uploadedBy?: string): Promise<Memory[]> {
+    let url = this.API_URL;
+    if (uploadedBy) {
+      url += `?uploadedBy=${encodeURIComponent(uploadedBy)}`;
     }
-    return [];
+    const memories = await firstValueFrom(this.http.get<Memory[]>(url));
+    return memories.map(m => ({
+      ...m,
+      createdAt: new Date(m.createdAt)
+    }));
   }
 
-  getMemoryByLocation(lat: number, lng: number, tolerance: number = 0.001): Memory[] {
-    const memories = this.getMemories();
+  async getMemoryById(id: string): Promise<Memory | null> {
+    const memories = await this.getMemories();
+    return memories.find(memory => memory.id === id) || null;
+  }
+
+  async getMemoryByLocation(lat: number, lng: number, tolerance: number = 0.001): Promise<Memory[]> {
+    const memories = await this.getMemories();
     return memories.filter(memory => 
       Math.abs(memory.lat - lat) < tolerance && 
       Math.abs(memory.lng - lng) < tolerance
     );
   }
 
-  // New method to check if a location has memories nearby
-  hasMemoriesNearby(lat: number, lng: number, tolerance: number = 0.01): boolean {
-    const memories = this.getMemoryByLocation(lat, lng, tolerance);
+  async hasMemoriesNearby(lat: number, lng: number, tolerance: number = 0.01): Promise<boolean> {
+    const memories = await this.getMemoryByLocation(lat, lng, tolerance);
     return memories.length > 0;
   }
 
-  // New method to get the closest memory to a location
-  getClosestMemory(lat: number, lng: number): Memory | null {
-    const memories = this.getMemories();
+  async getClosestMemory(lat: number, lng: number): Promise<Memory | null> {
+    const memories = await this.getMemories();
     if (memories.length === 0) return null;
 
     let closestMemory = memories[0];
@@ -83,35 +82,30 @@ export class MemoryService {
     return closestMemory;
   }
 
-  getMemoryById(id: string): Memory | null {
-    const memories = this.getMemories();
-    return memories.find(memory => memory.id === id) || null;
-  }
-
-  searchMemoriesByTag(tag: string): Memory[] {
-    const memories = this.getMemories();
-    return memories.filter(memory => 
+  async searchMemoriesByTag(tag: string): Promise<Memory[]> {
+    const memories = await this.getMemories();
+    return memories.filter(memory =>
       memory.tags.some(t => t.toLowerCase().includes(tag.toLowerCase()))
     );
   }
 
-  getAllTags(): string[] {
-    const memories = this.getMemories();
+  async getAllTags(): Promise<string[]> {
+    const memories = await this.getMemories();
     const allTags = memories.flatMap(memory => memory.tags);
     return [...new Set(allTags)].sort();
   }
 
-  // Helper method to calculate distance between two points
+  // Helper methods
   private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
-    const R = 6371; // Radius of the Earth in kilometers
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
     const a = 
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLng/2) * Math.sin(dLng/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-    return R * c; // Distance in kilometers
+    return R * c;
   }
 
   private generateId(): string {

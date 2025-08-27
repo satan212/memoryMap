@@ -13,6 +13,7 @@ import { MemoryService, Memory } from '../../services/memory.service';
 export class MemoryViewPage implements OnInit {
   memory: Memory | null = null;
   loading: boolean = true;
+  error: string = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -23,16 +24,34 @@ export class MemoryViewPage implements OnInit {
   ngOnInit(): void {
     this.route.params.subscribe(params => {
       const memoryId = params['id'];
-      this.loadMemory(memoryId);
+      if (memoryId) {
+        this.loadMemory(memoryId);
+      } else {
+        this.error = 'No memory ID provided';
+        this.loading = false;
+      }
     });
   }
 
-  loadMemory(id: string) {
+  async loadMemory(id: string) {
     this.loading = true;
-    setTimeout(() => {
-      this.memory = this.memoryService.getMemoryById(id);
+    this.error = '';
+    
+    try {
+      // Simulate loading delay
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      this.memory = await this.memoryService.getMemoryById(id);
+      
+      if (!this.memory) {
+        this.error = 'Memory not found';
+      }
+    } catch (error) {
+      console.error('Error loading memory:', error);
+      this.error = 'Failed to load memory. Please try again.';
+    } finally {
       this.loading = false;
-    }, 500); // Simulate loading delay
+    }
   }
 
   goBackToMap() {
@@ -77,5 +96,14 @@ export class MemoryViewPage implements OnInit {
         }
       });
     }
+  }
+
+  retryLoading() {
+    this.route.params.subscribe(params => {
+      const memoryId = params['id'];
+      if (memoryId) {
+        this.loadMemory(memoryId);
+      }
+    });
   }
 }

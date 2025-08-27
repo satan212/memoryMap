@@ -19,6 +19,8 @@ export class MemoriesListPage implements OnInit {
   selectedTag: string = '';
   lat?: number;
   lng?: number;
+  loading: boolean = true;
+  error: string = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -34,15 +36,27 @@ export class MemoriesListPage implements OnInit {
     });
   }
 
-  loadMemories() {
-    if (this.lat !== undefined && this.lng !== undefined) {
-      this.allMemories = this.memoryService.getMemoryByLocation(this.lat, this.lng);
-    } else {
-      this.allMemories = this.memoryService.getMemories();
-    }
+  async loadMemories() {
+    this.loading = true;
+    this.error = '';
     
-    this.filteredMemories = [...this.allMemories];
-    this.loadAvailableTags();
+    try {
+      if (this.lat !== undefined && this.lng !== undefined) {
+        this.allMemories = await this.memoryService.getMemoryByLocation(this.lat, this.lng);
+      } else {
+        this.allMemories = await this.memoryService.getMemories();
+      }
+      
+      this.filteredMemories = [...this.allMemories];
+      this.loadAvailableTags();
+    } catch (error) {
+      console.error('Error loading memories:', error);
+      this.error = 'Failed to load memories. Please try again.';
+      this.allMemories = [];
+      this.filteredMemories = [];
+    } finally {
+      this.loading = false;
+    }
   }
 
   loadAvailableTags() {
@@ -94,5 +108,9 @@ export class MemoriesListPage implements OnInit {
 
   trackByMemoryId(index: number, memory: Memory): string {
     return memory.id;
+  }
+
+  retryLoading() {
+    this.loadMemories();
   }
 }

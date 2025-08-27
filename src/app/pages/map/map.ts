@@ -131,27 +131,41 @@ export class MapPage implements AfterViewInit, OnDestroy, OnInit {
     });
   }
 
-  handleMapClick(location: google.maps.LatLng) {
+  async handleMapClick(location: google.maps.LatLng) {
     const lat = location.lat();
     const lng = location.lng();
     
-    // Check if there are existing memories at this location with a tolerance
-    const existingMemories = this.memoryService.getMemoryByLocation(lat, lng, 0.01); // Increased tolerance
-    
-    if (existingMemories.length > 0) {
-      // If memories exist, show them
-      this.showMemories(existingMemories, location);
-    } else {
-      // If no memories exist, add a temporary marker and go to memory entry
-      this.addTemporaryMarker(location);
+    try {
+      // Check if there are existing memories at this location with a tolerance
+      const existingMemories = await this.memoryService.getMemoryByLocation(lat, lng, 0.01); // Increased tolerance
+      
+      if (existingMemories.length > 0) {
+        // If memories exist, show them
+        this.showMemories(existingMemories, location);
+      } else {
+        // If no memories exist, add a temporary marker and go to memory entry
+        this.addTemporaryMarker(location);
 
+        const confirmAdd = confirm(
+          ` Do you want to add a memory at this location?\nLatitude: ${lat.toFixed(4)}, Longitude: ${lng.toFixed(4)}`
+        );
+        
+        // Navigate to memory entry page
+        if(confirmAdd){
+          this.router.navigate(['/add-memory'], {
+            queryParams: { lat, lng }
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error checking existing memories:', error);
+      // Still allow adding new memory even if check fails
+      this.addTemporaryMarker(location);
       const confirmAdd = confirm(
         ` Do you want to add a memory at this location?\nLatitude: ${lat.toFixed(4)}, Longitude: ${lng.toFixed(4)}`
       );
       
-      // Navigate to memory entry page
       if(confirmAdd){
-
         this.router.navigate(['/add-memory'], {
           queryParams: { lat, lng }
         });
@@ -184,8 +198,7 @@ export class MapPage implements AfterViewInit, OnDestroy, OnInit {
     });
   }
 
-  showMemories(memories: Memory[], location: google.maps.LatLng) 
-  {
+  showMemories(memories: Memory[], location: google.maps.LatLng) {
     if (memories.length === 1) {
       this.router.navigate(['/view-memory', memories[0].id]);
     } else {
@@ -198,25 +211,35 @@ export class MapPage implements AfterViewInit, OnDestroy, OnInit {
     }
   }
 
-  loadExistingMemories() {
+  async loadExistingMemories() {
     this.clearMarkers();
     
-    let memories: Memory[];
-    if (this.searchTag.trim()) {
-      memories = this.memoryService.searchMemoriesByTag(this.searchTag);
-    } else {
-      memories = this.memoryService.getMemories();
+    try {
+      let memories: Memory[];
+      if (this.searchTag.trim()) {
+        memories = await this.memoryService.searchMemoriesByTag(this.searchTag);
+      } else {
+        memories = await this.memoryService.getMemories();
+      }
+
+      this.filteredMemoriesCount = memories.length;
+
+      memories.forEach(memory => {
+        this.addExistingMarker(memory);
+      });
+    } catch (error) {
+      console.error('Error loading memories:', error);
+      this.filteredMemoriesCount = 0;
     }
-
-    this.filteredMemoriesCount = memories.length;
-
-    memories.forEach(memory => {
-      this.addExistingMarker(memory);
-    });
   }
 
-  loadAvailableTags() {
-    this.availableTags = this.memoryService.getAllTags();
+  async loadAvailableTags() {
+    try {
+      this.availableTags = await this.memoryService.getAllTags();
+    } catch (error) {
+      console.error('Error loading tags:', error);
+      this.availableTags = [];
+    }
   }
 
   addExistingMarker(memory: Memory) {

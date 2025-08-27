@@ -1,5 +1,3 @@
-
-
 import { Component, OnInit } from '@angular/core';
 import { FormBuilder, Validators, FormGroup, ReactiveFormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -20,7 +18,10 @@ export class MemoryEntryPage implements OnInit {
   selectedFileName: string = '';
   selectedFile: File | null = null;
   isSubmitting: boolean = false;
-  suggestedTags: string[] = ['vacation', 'family', 'friends', 'devotional', 'work', 'celebration', 'nature', 'food'];
+  suggestedTags: string[] = [
+    'vacation', 'family', 'friends', 'devotional',
+    'work', 'celebration', 'nature', 'food'
+  ];
 
   constructor(
     private fb: FormBuilder, 
@@ -29,7 +30,7 @@ export class MemoryEntryPage implements OnInit {
     private memoryService: MemoryService
   ) {}
 
-  ngOnInit(): void {
+  async ngOnInit(): Promise<void> {
     this.route.queryParams.subscribe(params => {
       this.lat = +params['lat'];
       this.lng = +params['lng'];
@@ -42,8 +43,8 @@ export class MemoryEntryPage implements OnInit {
       tags: ['']
     });
 
-    // Load existing tags for suggestions
-    const existingTags = this.memoryService.getAllTags();
+    // ✅ Await service call
+    const existingTags = await this.memoryService.getAllTags();
     this.suggestedTags = [...new Set([...this.suggestedTags, ...existingTags])];
   }
 
@@ -57,8 +58,10 @@ export class MemoryEntryPage implements OnInit {
 
   addSuggestedTag(tag: string) {
     const currentTags = this.memoryForm.get('tags')?.value || '';
-    const tagsArray = currentTags.split(',').map((t: string) => t.trim()).filter((t: string) => t);
-    
+    const tagsArray = currentTags.split(',')
+      .map((t: string) => t.trim())
+      .filter((t: string) => t);
+
     if (!tagsArray.includes(tag)) {
       tagsArray.push(tag);
       this.memoryForm.patchValue({
@@ -67,14 +70,16 @@ export class MemoryEntryPage implements OnInit {
     }
   }
 
-  onSubmit() {
+  async onSubmit() {
     if (this.memoryForm.valid && !this.isSubmitting) {
       this.isSubmitting = true;
       
       const formValue = this.memoryForm.value;
       const tagsArray = formValue.tags ? 
-        formValue.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag) : 
-        [];
+        formValue.tags.split(',')
+          .map((tag: string) => tag.trim())
+          .filter((tag: string) => tag) 
+        : [];
 
       const memoryData = {
         title: formValue.title,
@@ -84,11 +89,12 @@ export class MemoryEntryPage implements OnInit {
         lat: this.lat,
         lng: this.lng,
         fileName: this.selectedFileName,
-        fileContent: '' // In a real app, you'd convert file to base64 or upload to server
+        fileContent: '' // TODO: convert file to base64 or handle upload
       };
 
       try {
-        const memoryId = this.memoryService.saveMemory(memoryData);
+        // ✅ Await saveMemory since it’s async
+        const memoryId = await this.memoryService.saveMemory(memoryData);
         
         setTimeout(() => {
           alert('✅ Memory saved successfully!');

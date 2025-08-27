@@ -31,7 +31,10 @@
     "@angular/platform-server": "^20.2.0",
     "@angular/router": "^20.2.0",
     "@angular/ssr": "^20.2.0",
+    "body-parser": "^2.2.0",
+    "cors": "^2.8.5",
     "express": "^5.1.0",
+    "mongoose": "^8.18.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.0"
@@ -51,5 +54,18 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "typescript": "~5.9.2"
-  }
+  },
+  "description": "This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.0.",
+  "main": "index.js",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/satan212/memoryMap.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/satan212/memoryMap/issues"
+  },
+  "homepage": "https://github.com/satan212/memoryMap#readme"
 }
